@@ -16,11 +16,10 @@
 13. **permission denied … docker.sock** → `sudo usermod -aG docker $USER` puis **se déconnecter/reconnecter**.
 
 ## ⏸️ Où j'en suis (pause du 10/10/2026)
-- Notions 1 à 8 validées. **En cours : TP 1 de révision (`tp1/SUJET.md`)**, puis **notion 9. Docker Compose** (plusieurs conteneurs, un seul fichier, `docker compose up`).
+- Notions 1 à 8 validées. **TP 1 de révision validé ✅** (`tp1/SUJET.md`). **Prochaine notion : 9. Docker Compose** (plusieurs conteneurs, un seul fichier, `docker compose up`).
 - Reprendre : `cd ~/docker-learning` puis `claude -c`.
 - Aide-mémoire de toutes les commandes : `commandes-docker.md`.
 - Corrigé du TP 1 : `tp1/CORRIGE.md`.
-- ⚠️ `site-v1` tourne peut-être encore (port 8080) → `docker stop site-v1`.
 - Images d'autres projets (spark, cuda…) → **ne pas y toucher**.
 
 ---
@@ -231,3 +230,10 @@ CMD ["python", "app.py"]     # exécuté à CHAQUE démarrage de conteneur
 - `sed -i 's/ancien/nouveau/' fichier` : remplace un texte dans un fichier, directement.
 - **Piège `curl -s`** : en mode silencieux, curl cache **aussi les erreurs**. Une réponse **vide** = souvent « aucun serveur sur ce port » → vérifier avec `docker ps`. (`build` crée une image, il ne lance **aucun** conteneur !)
 - Le cache est partagé entre projets : `CACHED [2/4] WORKDIR /app` vient d'un build précédent (`mon-app`) qui avait exactement la même étape.
+
+## TP 1 : validé ✅
+- Toutes les parties faites : alpine ×3 + `rmi` refusé (prédiction juste), conteneur persistant, volume + logs (9000), comparaison volume (9000) / image (9001), appli Python `appli:1.0` / `appli:2.0`, ménage complet.
+- Questions finales : 8/8 après complément. Points à retenir de la correction :
+  - Toujours **aller jusqu'au bout** de l'explication : la règle **et** son application à l'exemple.
+  - `WORKDIR` fixe le dossier où `CMD` s'exécute (`os.getcwd()` → `/app`).
+  - Conflit de nom → `docker ps -a`, puis `start` (réutiliser), `rm` (recréer) ou **un autre nom**.
