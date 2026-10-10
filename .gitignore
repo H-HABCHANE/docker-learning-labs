@@ -1,0 +1,25 @@
+# Configuration locale de l'assistant (non publiée)
+CLAUDE.md
+CLAUDE.local.md
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Secrets et variables d'environnement
+.env
+*.env
+
+# Logs
+*.log
+
+# Fichiers d'éditeurs (nano, vim, VS Code) et système
+*.swp
+*.save
+*~
+.vscode/
+.idea/
+.DS_Store
