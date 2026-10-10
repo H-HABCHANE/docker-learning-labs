@@ -12,12 +12,12 @@
 9. **Dockerfile** : `FROM` (base) → `WORKDIR` (dossier) → `COPY` (fichiers) → `RUN` (**au build, une fois**) → `CMD` (**à chaque run**).
 10. **`docker build -t nom .`** → ne jamais oublier le **`.`** (contexte de build = dossier avec le Dockerfile et les fichiers).
 11. **Cache** : Docker ne refait que les étapes modifiées… et **toutes celles d'après**.
-12. **Réflexes terminal** : ne jamais coller le prompt ni un message d'erreur ; une URL va dans le navigateur ou après `curl` ; nano = **Ctrl+O, Entrée, Ctrl+X** ; `-it` et nano → vrai terminal, pas le `!` de Claude Code.
+12. **Réflexes terminal** : ne jamais coller le prompt ni un message d'erreur ; une URL va dans le navigateur ou après `curl` ; nano = **Ctrl+O, Entrée, Ctrl+X** ; `-it` et nano → toujours dans un vrai terminal interactif.
 13. **permission denied … docker.sock** → `sudo usermod -aG docker $USER` puis **se déconnecter/reconnecter**.
 
 ## ⏸️ Où j'en suis (pause du 10/10/2026)
 - Notions 1 à 8 validées. **TP 1 de révision validé ✅** (`tp1/SUJET.md`). **Prochaine notion : 9. Docker Compose** (plusieurs conteneurs, un seul fichier, `docker compose up`).
-- Reprendre : `cd ~/docker-learning` puis `claude -c`.
+- Reprendre : `cd ~/docker-learning`.
 - Aide-mémoire de toutes les commandes : `commandes-docker.md`.
 - Corrigé du TP 1 : `tp1/CORRIGE.md`.
 - Images d'autres projets (spark, cuda…) → **ne pas y toucher**.
@@ -96,7 +96,7 @@
   - `/` = je suis à la racine du système de fichiers du conteneur ; `#` = prompt de root.
 - Dedans : un mini-Ubuntu complet (`ls` montre bin, etc, home…), isolé de mon PC.
 - `exit` : sortir du conteneur → le conteneur s'arrête (`Exited`).
-- ⚠️ Les commandes `-it` doivent être tapées dans le vrai terminal, pas avec `!` dans Claude Code.
+- ⚠️ Les commandes `-it` doivent être tapées dans un vrai terminal interactif.
 - Après `exit` : le conteneur est **arrêté** (`Exited`), mais **pas supprimé** → il apparaît dans `docker ps -a` mais pas dans `docker ps`.
 - Pourquoi ? Un conteneur vit tant que son programme principal (ici `bash`) tourne. `exit` ferme bash → le conteneur s'arrête.
 - Relancer `docker run -it ubuntu bash` crée un **nouveau** conteneur (nouvel ID, nouveau nom), il ne reprend pas l'ancien.
@@ -193,7 +193,7 @@
 ## Erreur : « cat: Dockerfile: No such file or directory »
 - **Cause** : le fichier n'avait jamais été sauvegardé dans nano.
 - **Correction** : dans nano, **Ctrl+O** puis **Entrée** (vérifier le message `[ Wrote N lines ]`), puis **Ctrl+X**. Ou créer le fichier avec `echo ... >` et `echo ... >>`.
-- Attention : le `!` de Claude Code et mon terminal Ubuntu peuvent être dans des dossiers différents → vérifier avec `pwd`.
+- Attention : deux terminaux différents peuvent être dans des dossiers différents → vérifier avec `pwd`.
 - Rebuild : `FROM ... CACHED` = Docker réutilise ce qui n'a pas changé (le **cache**) ; seul `COPY` est refait → beaucoup plus rapide.
 - Après un rebuild, `mon-site-image:latest` a un **nouvel ID** : le nom est une **étiquette** déplacée sur la nouvelle image.
 - Pour mettre à jour un site « image » : `build` → `stop` + `rm` l'ancien conteneur → `run` un nouveau. (Astuce : faire le `build` d'abord pour réduire la coupure.)

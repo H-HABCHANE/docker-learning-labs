@@ -41,7 +41,7 @@ docker run <image> <commande>          # Lance le conteneur avec une autre comma
 | `--name <nom>` | Donne un **nom** au conteneur (sinon nom au hasard, ex. `happy_rosalind`). Le nom doit être **unique**. | `--name mon-site` |
 | `-i` | **Interactif** : le conteneur écoute ce que je tape | |
 | `-t` | Donne un **terminal** | |
-| `-it` | Les deux ensemble → **entrer dans le conteneur** (⚠️ vrai terminal, pas le `!` de Claude Code) | `docker run -it ubuntu bash` |
+| `-it` | Les deux ensemble → **entrer dans le conteneur** (⚠️ dans un vrai terminal interactif) | `docker run -it ubuntu bash` |
 | `-d` | **Détaché** : tourne en arrière-plan, me rend la main (affiche juste l'ID) | `-d` |
 | `-p <PC>:<conteneur>` | Relie un **port** de mon PC à un port du conteneur. **DEHORS : DEDANS** | `-p 8080:80` |
 | `-v <dossier PC>:<dossier conteneur>` | **Volume** : partage un dossier PC ↔ conteneur, en direct. **DEHORS : DEDANS**. Chemin complet obligatoire. | `-v "$PWD/site:/usr/share/nginx/html"` |
@@ -156,12 +156,6 @@ groups $USER                      # Les groupes enregistrés pour mon compte
 sudo usermod -aG docker $USER     # M'ajoute au groupe docker (une seule fois)
                                   #   → puis se DÉCONNECTER/RECONNECTER d'Ubuntu
 newgrp docker                     # Dépannage temporaire (valable dans ce terminal seulement)
-```
-
-### Dans Claude Code
-```
-! <commande>                      # Exécute la commande ici (sauf -it et nano → vrai terminal)
-claude -c                         # Reprendre la dernière conversation (depuis ~/docker-learning)
 ```
 
 ---
