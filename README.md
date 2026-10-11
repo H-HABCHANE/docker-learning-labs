@@ -13,7 +13,9 @@ Il s'agit d'un dépôt d'apprentissage : chaque dossier correspond à une étape
 ├── commandes-docker.md     ← aide-mémoire de toutes les commandes Docker, commentées
 ├── exercices/              ← exercices réalisés pendant le cours, un dossier par notion
 │   ├── 07-dockerfile-nginx/    ← première image : nginx + ma page HTML (FROM, COPY)
-│   └── 08-dockerfile-python/   ← application Python empaquetée (WORKDIR, RUN, CMD)
+│   ├── 08-dockerfile-python/   ← application Python empaquetée (WORKDIR, RUN, CMD)
+│   ├── 09-docker-compose/      ← Compose : nginx + client qui se parlent par nom de service
+│   └── 10-compose-volume/      ← Compose : build + volume nommé partagé (compteur de visites)
 └── tp1/                    ← TP 1 : révision générale des notions 1 à 8
     ├── SUJET.md
     ├── CORRIGE.md
@@ -21,7 +23,7 @@ Il s'agit d'un dépôt d'apprentissage : chaque dossier correspond à une étape
     └── app-python/             ← appli Python
 ```
 
-À venir (même organisation) : `tp2/`, `tp3/`…, `docker-compose/`, `kubernetes/`, `projets/`.
+À venir (même organisation) : `tp2/`, `tp3/`…, `kubernetes/`, `projets/`.
 
 ## Notions couvertes
 
@@ -35,6 +37,8 @@ Il s'agit d'un dépôt d'apprentissage : chaque dossier correspond à une étape
 | 6 | Volumes | `-v dossier_pc:dossier_conteneur[:ro]` |
 | 7 | Créer sa propre image | `Dockerfile`, `FROM`, `COPY`, `docker build` |
 | 8 | Empaqueter une application | `WORKDIR`, `RUN`, `CMD`, `--rm`, cache de build |
+| 9 | Docker Compose | `compose.yaml`, `services`, `depends_on`, `docker compose up/ps/logs/down` |
+| 10 | Compose avancé | `build:`, volumes nommés, `service_completed_successfully`, `down -v` |
 
 ## Lancer les exemples
 

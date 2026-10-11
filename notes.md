@@ -15,8 +15,9 @@
 12. **Réflexes terminal** : ne jamais coller le prompt ni un message d'erreur ; une URL va dans le navigateur ou après `curl` ; nano = **Ctrl+O, Entrée, Ctrl+X** ; `-it` et nano → toujours dans un vrai terminal interactif.
 13. **permission denied … docker.sock** → `sudo usermod -aG docker $USER` puis **se déconnecter/reconnecter**.
 
-## ⏸️ Où j'en suis (pause du 10/10/2026)
-- Notions 1 à 8 validées. **TP 1 de révision validé ✅** (`tp1/SUJET.md`). **Prochaine notion : 9. Docker Compose** (plusieurs conteneurs, un seul fichier, `docker compose up`).
+## ⏸️ Où j'en suis (pause du 11/10/2026)
+- Notions 1 à 8 validées. **TP 1 de révision validé ✅** (`tp1/SUJET.md`).
+- Notions 9 (Docker Compose) et 10 (`build:` + volumes nommés) validées ✅.
 - Reprendre : `cd ~/docker-learning`.
 - Aide-mémoire de toutes les commandes : `commandes-docker.md`.
 - Corrigé du TP 1 : `tp1/CORRIGE.md`.
@@ -237,3 +238,62 @@ CMD ["python", "app.py"]     # exécuté à CHAQUE démarrage de conteneur
   - Toujours **aller jusqu'au bout** de l'explication : la règle **et** son application à l'exemple.
   - `WORKDIR` fixe le dossier où `CMD` s'exécute (`os.getcwd()` → `/app`).
   - Conflit de nom → `docker ps -a`, puis `start` (réutiliser), `rm` (recréer) ou **un autre nom**.
+
+## 9. Docker Compose (dossier `exercices/09-docker-compose/`)
+- **Compose = un menu** : on décrit tous les conteneurs (services) dans un fichier `compose.yaml`, puis une seule commande lance tout.
+- Squelette :
+  ```yaml
+  services:
+    web:
+      image: nginx
+      ports:
+        - "8080:80"
+      volumes:
+        - ./site:/usr/share/nginx/html:ro
+  ```
+- YAML : **espaces uniquement** (jamais de tabulations), 2 espaces par niveau, `-` devant chaque élément de liste.
+- Dans `volumes`, `./` = à côté du `compose.yaml` (plus besoin de `$PWD`).
+- Commandes (à lancer dans le dossier du `compose.yaml`) :
+  - `docker compose up -d` : crée et lance tous les services en arrière-plan.
+  - `docker compose ps` : conteneurs du projet.
+  - `docker compose logs` : logs de tous les services.
+  - `docker compose down` : arrête **et supprime** les conteneurs du projet.
+- `mkdir -p a/b/c` : crée tous les dossiers du chemin d'un coup.
+- ✅ Exercice 1 réussi : ma commande `docker run -d -p 8080:80 -v ... nginx` traduite en `compose.yaml` (service `web`).
+- **Nom du conteneur** : `<projet>-<service>-<numéro>` → `09-docker-compose-web-1`. Le **projet** = nom du dossier qui contient le `compose.yaml`.
+- Compose crée automatiquement un **réseau** pour le projet (`09-docker-compose_default`) : c'est pour ça que l'adresse dans les logs est `172.21.0.1` (et plus `172.17.0.1`, le réseau Docker par défaut).
+- `docker compose logs` préfixe chaque ligne par le service (`web-1 |`), pratique quand il y a plusieurs services.
+- `docker compose down` → `Container ... Removed` **et** `Network ... Removed` : supprime conteneurs + réseau du projet. Mes fichiers (`site/`) restent sur le PC (prédiction confirmée).
+- ✅ Exercice 2 réussi : 2 services `web` (nginx) + `client` (alpine) dans le même `compose.yaml`.
+  - `command:` = remplace la commande par défaut de l'image (comme `docker run image commande`, ou `CMD`).
+  - `depends_on:` = ordre de **démarrage** (web avant client). ⚠️ Ne garantit pas que web est **prêt** à répondre (sans `sleep`, ça a marché ici car nginx démarre très vite, mais ce n'est pas garanti).
+  - `client` affiche ma page avec `wget -qO- http://web` → **le nom du service sert d'adresse** sur le réseau du projet (DNS interne de Compose).
+  - `client` → `Exited (0)` : son programme principal (`wget`) a fini → le conteneur s'arrête. `web` → `Up` (nginx tourne en continu).
+  - Un service sans `ports:` n'est pas joignable depuis le PC, mais il peut appeler les autres services.
+
+## Erreur : « curl: (6) Could not resolve host: web » (depuis le PC)
+- **Cause** : le nom `web` n'existe que **dans le réseau Compose**. Mon PC ne le connaît pas.
+- **Correction** : depuis le PC, passer par le port publié : `curl http://localhost:8080`.
+
+## Piège : `wget -qO- http://web` sur le PC n'affiche rien
+- `-q` (quiet) cache **aussi les erreurs** (comme `curl -s`). Une sortie vide ≠ succès.
+- **À retenir** : service → service = **pas besoin de `ports:`** (nom du service + port **interne**, ex. `http://web` = port 80) ; PC → conteneur = **besoin de `ports:`** (`localhost:8080` → `web:80`).
+
+## 10. `build:` et volumes nommés (mini-projet compteur, dossier `exercices/10-compose-volume/`)
+- `build: .` dans `compose.yaml` = Compose construit l'image avec le Dockerfile du dossier (au lieu de `image:`). Image nommée `<projet>-<service>` (ex. `09-docker-compose-compteur`).
+- `docker compose up -d --build` : reconstruit les images avant de lancer (le cache sert si rien n'a changé).
+- **Volume nommé** = casier **géré par Docker** (pas un dossier de mon PC). Syntaxe : `donnees:/data` (pas de `./`), et **déclaration obligatoire** en bas :
+  ```yaml
+  volumes:
+    donnees:
+  ```
+  Nom réel : `<projet>_<volume>` → `09-docker-compose_donnees` (`docker volume ls`).
+- Partagé entre services : `compteur` écrit dans `/data`, `web` lit le **même** volume dans `/usr/share/nginx/html:ro`.
+- `depends_on` avec `condition: service_completed_successfully` : `web` attend que `compteur` soit **terminé avec succès** (`Exited (0)`). Résout le problème « démarré ≠ prêt ».
+- `docker compose start compteur` : relance le service arrêté → compteur 3, puis 4.
+- Résultats vérifiés :
+  - `down` puis `up` → compteur **continue** (1 → 2) : `down` supprime conteneurs + réseau, **pas** les volumes nommés.
+  - `down -v` → `Volume ... Removed` → au prochain `up`, nouveau volume vide → compteur **repart à 1**. ⚠️ `-v` efface les données !
+- Rangement : le projet a d'abord été fait par erreur dans `09-docker-compose/` (d'où les noms `09-docker-compose_*` ci-dessus). Déplacé ensuite dans `10-compose-volume/` → le projet s'appelle maintenant `10-compose-volume` (volume `10-compose-volume_donnees`).
+- ⚠️ Toujours vérifier `pwd` avant de créer des fichiers : un `compose.yaml` écrit dans le mauvais dossier **remplace** celui qui y était.
+- `docker compose down -v` doit être lancé **dans le dossier du projet**, et ne pas être suivi d'un `up` si on veut que tout reste arrêté.

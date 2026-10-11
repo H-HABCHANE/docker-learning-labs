@@ -1,0 +1,13 @@
+services:
+  web:
+    image: nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./site:/usr/share/nginx/html:ro
+
+  client:
+    image: alpine
+    depends_on:
+      - web
+    command: ["wget", "-qO-", "http://web"]

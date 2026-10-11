@@ -1,0 +1,18 @@
+services:
+  compteur:
+    build: .
+    volumes:
+      - donnees:/data
+
+  web:
+    image: nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - donnees:/usr/share/nginx/html:ro
+    depends_on:
+      compteur:
+        condition: service_completed_successfully
+
+volumes:
+  donnees:
