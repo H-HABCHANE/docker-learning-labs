@@ -16,14 +16,16 @@ Il s'agit d'un dépôt d'apprentissage : chaque dossier correspond à une étape
 │   ├── 08-dockerfile-python/   ← application Python empaquetée (WORKDIR, RUN, CMD)
 │   ├── 09-docker-compose/      ← Compose : nginx + client qui se parlent par nom de service
 │   └── 10-compose-volume/      ← Compose : build + volume nommé partagé (compteur de visites)
-└── tp1/                    ← TP 1 : révision générale des notions 1 à 8
-    ├── SUJET.md
-    ├── CORRIGE.md
-    ├── Dockerfile, portfolio/  ← portfolio servi par nginx
-    └── app-python/             ← appli Python
+├── tp1/                    ← TP 1 : révision générale des notions 1 à 8
+│   ├── SUJET.md
+│   ├── CORRIGE.md
+│   ├── Dockerfile, portfolio/  ← portfolio servi par nginx
+│   └── app-python/             ← appli Python
+└── tp2/                    ← TP 2 : Docker Compose (notions 9 et 10), « Le livre d'or »
+    └── SUJET.md
 ```
 
-À venir (même organisation) : `tp2/`, `tp3/`…, `kubernetes/`, `projets/`.
+À venir (même organisation) : `tp3/`…, `kubernetes/`, `projets/`.
 
 ## Notions couvertes
 

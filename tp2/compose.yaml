@@ -1,0 +1,25 @@
+services:
+  generateur:
+    build: .
+    volumes:
+      - ./entree:/entree:ro
+      - pages:/pages
+
+  web:
+    image: nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - pages:/usr/share/nginx/html:ro
+    depends_on:
+      generateur:
+        condition: service_completed_successfully
+
+  testeur:
+    image: alpine
+    command: ["wget", "-qO-", "http://web"]
+    depends_on:
+      - web
+
+volumes:
+  pages:

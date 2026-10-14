@@ -18,6 +18,7 @@
 ## ⏸️ Où j'en suis (pause du 11/10/2026)
 - Notions 1 à 8 validées. **TP 1 de révision validé ✅** (`tp1/SUJET.md`).
 - Notions 9 (Docker Compose) et 10 (`build:` + volumes nommés) validées ✅.
+- **TP 2 validé ✅** (`tp2/SUJET.md`), « Le livre d'or ». **Prochaine notion : 11. Base de données + healthcheck** (« démarré ≠ prêt »).
 - Reprendre : `cd ~/docker-learning`.
 - Aide-mémoire de toutes les commandes : `commandes-docker.md`.
 - Corrigé du TP 1 : `tp1/CORRIGE.md`.
@@ -297,3 +298,32 @@ CMD ["python", "app.py"]     # exécuté à CHAQUE démarrage de conteneur
 - Rangement : le projet a d'abord été fait par erreur dans `09-docker-compose/` (d'où les noms `09-docker-compose_*` ci-dessus). Déplacé ensuite dans `10-compose-volume/` → le projet s'appelle maintenant `10-compose-volume` (volume `10-compose-volume_donnees`).
 - ⚠️ Toujours vérifier `pwd` avant de créer des fichiers : un `compose.yaml` écrit dans le mauvais dossier **remplace** celui qui y était.
 - `docker compose down -v` doit être lancé **dans le dossier du projet**, et ne pas être suivi d'un `up` si on veut que tout reste arrêté.
+
+## TP 2 : « Le livre d'or » (dossier `tp2/`)
+- 3 services : `generateur` (mon image Python, `build: .`), `web` (nginx, seul à publier un port), `testeur` (alpine, appelle `http://web`).
+- Deux types de stockage dans le même projet :
+  - `./entree:/entree:ro` (**bind mount**) = mes messages, sur mon PC → survivent à tout, même à `down -v`.
+  - `pages:/pages` (**volume nommé**) = fichiers produits par l'appli (`index.html`, `compteur.txt`) → effacés par `down -v`.
+- Ajouter un message ne change pas la page tout seul : le générateur a fini son travail. Il faut le relancer : `docker compose start generateur`.
+- Persistance vérifiée : `up` → 1 ; `down` + `up` → 2 (pas de `Volume Created`) ; `down -v` + `up` → 1 (`Volume Removed` puis `Created`).
+- `down` arrête les services dans l'**ordre inverse** du démarrage (testeur → web → generateur).
+
+## Panne volontaire : « service "generateur" didn't complete successfully: exit 1 »
+- **Provoquée** en renommant `entree/messages.txt` → Python : `FileNotFoundError: ... '/entree/messages.txt'`.
+- États : `generateur` → `Exited (1)` ; `web` et `testeur` → **`Created`** (créés mais **jamais démarrés**, ≠ `Exited`).
+- Lire un traceback Python **de bas en haut** : dernière ligne = la cause ; ligne `File "/app/generateur.py", line 12` = l'endroit dans mon code.
+- **Correction** : remettre le fichier, puis `docker compose up -d` (relance les conteneurs existants).
+- `condition: service_completed_successfully` empêche nginx de servir une ancienne page ou une page vide : la panne devient **visible**.
+- Le compteur n'a pas bougé pendant la panne : Python a planté **avant** d'écrire le compteur.
+
+## Ménage complet
+- `docker compose down -v` dans **le dossier du projet** (`cd ../exercices/10-compose-volume && docker compose down -v`), puis `docker rmi` des images construites.
+- Garder les images de base (`alpine`, `nginx`, `ubuntu`) évite de les retélécharger.
+
+## TP 2 : validé ✅ (questions finales)
+- On met dans l'image **le code** (change rarement) et on laisse dehors **les données** (changent souvent) → `messages.txt` en bind mount, pas en `COPY`.
+- Compose = tous les services lancés/arrêtés en **une commande**, configuration écrite dans un fichier, réseau créé automatiquement.
+- Nom du projet = nom du **dossier** du `compose.yaml` (`docker-learning` à la racine, `tp2` dans `tp2/`).
+- `image:` = image existante ; `build:` = construite avec mon Dockerfile (nom `<projet>-<service>`).
+- `depends_on` attend le **démarrage** ; `service_completed_successfully` attend la **réussite**.
+- Partie 4 : seul le générateur devait refaire la page → `docker compose start generateur` suffit ; `web` tourne toujours et lit le même volume.
