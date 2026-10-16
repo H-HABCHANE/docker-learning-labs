@@ -1,0 +1,24 @@
+services:
+  db:
+    image: redis
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    volumes:
+      - donnees:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping | grep PONG"]
+      interval: 2s
+      timeout: 2s
+      retries: 5
+
+  app:
+    build: .
+    environment:
+      REDIS_HOST: db
+      NOM_APP: Mon super compteur
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  donnees:

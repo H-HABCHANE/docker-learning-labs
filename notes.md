@@ -14,11 +14,15 @@
 11. **Cache** : Docker ne refait que les étapes modifiées… et **toutes celles d'après**.
 12. **Réflexes terminal** : ne jamais coller le prompt ni un message d'erreur ; une URL va dans le navigateur ou après `curl` ; nano = **Ctrl+O, Entrée, Ctrl+X** ; `-it` et nano → toujours dans un vrai terminal interactif.
 13. **permission denied … docker.sock** → `sudo usermod -aG docker $USER` puis **se déconnecter/reconnecter**.
+14. **Démarré ≠ prêt** : une base de données a un **healthcheck** + un **volume** ; l'appli attend avec `condition: service_healthy`. Un conteneur `unhealthy` reste `Up`.
+15. **Réglages et secrets hors de l'image** : `environment:` + `${VAR}` lu dans `.env` ; **`.env` jamais sur GitHub** (`.gitignore`), on versionne un `.env.example`. Un healthcheck ne regarde que le **code de sortie**.
 
-## ⏸️ Où j'en suis (pause du 11/10/2026)
+## ⏸️ Où j'en suis (pause du 16/10/2026)
 - Notions 1 à 8 validées. **TP 1 de révision validé ✅** (`tp1/SUJET.md`).
 - Notions 9 (Docker Compose) et 10 (`build:` + volumes nommés) validées ✅.
-- **TP 2 validé ✅** (`tp2/SUJET.md`), « Le livre d'or ». **Prochaine notion : 11. Base de données + healthcheck** (« démarré ≠ prêt »).
+- **TP 2 validé ✅** (`tp2/SUJET.md`), « Le livre d'or ».
+- Notion 11 (base de données Redis + healthcheck) validée ✅.
+- Notion 12 (variables d'environnement, `.env`, secrets) validée ✅. **Prochaine notion : 13. Docker Hub et tags** (puis TP 3, et ensuite Kubernetes).
 - Reprendre : `cd ~/docker-learning`.
 - Aide-mémoire de toutes les commandes : `commandes-docker.md`.
 - Corrigé du TP 1 : `tp1/CORRIGE.md`.
@@ -327,3 +331,97 @@ CMD ["python", "app.py"]     # exécuté à CHAQUE démarrage de conteneur
 - `image:` = image existante ; `build:` = construite avec mon Dockerfile (nom `<projet>-<service>`).
 - `depends_on` attend le **démarrage** ; `service_completed_successfully` attend la **réussite**.
 - Partie 4 : seul le générateur devait refaire la page → `docker compose start generateur` suffit ; `web` tourne toujours et lit le même volume.
+
+## 11. Base de données + healthcheck (dossier `exercices/11-healthcheck-redis/`)
+- Problème : **démarré ≠ prêt**. Une base de données met quelques secondes à se préparer ; une appli qui s'y connecte trop tôt plante (erreur de connexion).
+- **Redis** = base de données « clé → valeur », très simple. Image `redis`, port **6379**, données dans **`/data`** → volume nommé. `redis-cli ping` répond `PONG` quand elle est prête.
+- L'appli (`app.py`) : `redis.Redis(host="db", port=6379)` (nom du **service**, DNS interne) ; `r.incr("visites")` = +1 dans Redis et renvoie la nouvelle valeur.
+- **Healthcheck** = un test lancé régulièrement **dans** le conteneur :
+  ```yaml
+  db:
+    image: redis
+    volumes:
+      - donnees:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]   # réussit = en bonne santé
+      interval: 2s                         # un test toutes les 2 s
+      timeout: 2s                          # test trop long = échec
+      retries: 5                           # 5 échecs de suite = unhealthy
+  ```
+  États visibles dans `docker compose ps` : `(health: starting)` → `(healthy)` 💚 ou `(unhealthy)` 💔.
+- Côté appli : `depends_on: db: condition: service_healthy` → `app` démarre seulement quand `db` est **healthy** (Compose affiche `Waiting` puis `Healthy`). Vérifié **à chaque démarrage**, même pour un `docker compose start app`.
+- Analogie : un serveur passe régulièrement en cuisine demander « prêts ? » et ne fait entrer les clients qu'après un « oui ».
+- Dockerfile : `RUN pip install redis` **avant** `COPY app.py .` → si je modifie seulement mon code, Docker réutilise l'installation en cache. En haut ce qui change rarement (et prend du temps), en bas ce qui change souvent.
+- `PORTS` = `6379/tcp` **sans flèche** → port ouvert seulement dans le réseau du projet, pas vers le PC.
+- Résultats vérifiés :
+  - `up` → visite 1 ; deux `start app` → 2, 3 (même conteneur → les logs **s'accumulent**).
+  - `down` + `up` → **4**, sur une seule ligne de logs : nouveau conteneur (logs neufs), mais données gardées dans le **volume**.
+  - Conteneur supprimé → logs perdus ; volume conservé → données conservées. C'est pour ça qu'une base a toujours un volume.
+  - Modifier la config d'un service → `Recreate` de **ce** service seulement ; un service inchangé est juste rallumé (il garde ses logs : 4 puis 5).
+  - `down -v` → `Volume ... Removed` → compteur perdu, on repartirait à 1.
+
+## Panne volontaire : « dependency failed to start: container 11-healthcheck-redis-db-1 is unhealthy »
+- **Provoquée** en changeant le test : `["CMD", "redis-cli", "-p", "9999", "ping"]` (mauvais port, Redis écoute sur 6379).
+- **Cause** : 5 échecs × 2 s ≈ **10 s** → `db` déclaré `unhealthy` → Compose refuse de démarrer `app`.
+- États : `db` → **`Up (unhealthy)`** (un healthcheck **n'arrête pas** le conteneur, il pose juste une étiquette ; ce sont Compose, et plus tard Kubernetes, qui décident quoi en faire) ; `app` → pas démarré (`Exited (0)` s'il existait déjà, `Created` s'il est neuf).
+- **Correction** : remettre `["CMD", "redis-cli", "ping"]`, puis `docker compose up -d`.
+- Modifier un fichier sans éditeur : `sed -i 's/ANCIEN/NOUVEAU/' fichier` (rechercher / remplacer).
+
+## Erreurs de la notion 11
+- `cat: app.py: No such file or directory` → le fichier n'était **pas encore créé** : `cat` **lit**, il ne crée pas. D'abord créer (nano, `printf`…), ensuite vérifier.
+- `app.py` créé à la racine `~/docker-learning/` au lieu du dossier de l'exercice → le terminal Ubuntu n'était pas dans le bon dossier. Correction : `mv ~/docker-learning/app.py ~/docker-learning/exercices/11-healthcheck-redis/`. Chaque terminal a **son propre** dossier courant → `pwd` avant de créer un fichier.
+- `nano` : « Standard input is not a terminal » → nano est interactif, il lui faut un **vrai terminal interactif**. Sinon : `printf '%s\n' 'ligne 1' 'ligne 2' > fichier`.
+- Modification de `compose.yaml` pas prise en compte → fichier non sauvegardé (vérifiable avec `ls -l` : l'heure de modification n'avait pas changé).
+- Commande écrite comme un simple message au lieu d'être exécutée → rien ne se passe : vérifier le résultat (`docker ps -a`, `ls`) quand une commande n'affiche rien d'attendu.
+
+## Notion 11 : validée ✅
+- `depends_on` simple attend que le conteneur **démarre** ; `service_healthy` attend que son **healthcheck réussisse**. Sans lui, l'appli peut se connecter à Redis trop tôt et recevoir une erreur de connexion.
+- `RUN pip install` avant `COPY` → profiter du cache : modifier seulement `app.py` ne refait pas l'installation.
+
+## 12. Variables d'environnement, `.env` et secrets (dossier `exercices/12-variables-env/`)
+- Problème : un réglage écrit **en dur** dans le code (`host="db"`) oblige à modifier le code **et** reconstruire l'image pour le changer.
+- **Variable d'environnement** = paire `NOM=valeur` donnée au conteneur **au démarrage** (pas au build). Analogie : l'image = la **recette**, les variables = les **réglages du four** ; une seule recette, réglée différemment selon la cuisine.
+- `docker run --rm -e PRENOM=Hicham alpine env` → `PRENOM=Hicham` apparaît dans la liste. Sans `-e`, il disparaît. Docker ajoute toujours `PATH`, `HOME` et `HOSTNAME` (= l'ID du conteneur, différent à chaque `run`).
+- En Python : `os.environ.get("NOM_APP", "Sans nom")` lit la variable (valeur par défaut si elle est absente ; sans défaut → `None`).
+- Dans Compose :
+  ```yaml
+  app:
+    environment:
+      REDIS_HOST: db
+      NOM_APP: Mon super compteur
+      REDIS_PASSWORD: ${REDIS_PASSWORD}   # valeur lue dans le fichier .env
+  ```
+- Changer `NOM_APP` puis `docker compose up -d` (**sans** `--build`) → **pas de reconstruction**, seul `app` est recréé (sa config a changé), `db` est inchangé. Même image, autre réglage.
+- **`.env`** : fichier à côté du `compose.yaml`, lu **automatiquement** par Compose. Une ligne `REDIS_PASSWORD=motdepasse123` (pas d'espaces autour du `=`). Dans `compose.yaml`, `${REDIS_PASSWORD}` est remplacé par sa valeur.
+- Fichier qui commence par un point = **caché** : `ls` ne le montre pas, `ls -a` oui. Caché ≠ protégé.
+- Redis avec mot de passe : `command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]`.
+- **Ne jamais versionner `.env`** : protégé par la règle `*.env` du `.gitignore` (`git check-ignore -v .env` → `.gitignore:9:*.env`). On versionne à la place un **`.env.example`** avec des valeurs bidon (`REDIS_PASSWORD=change-moi`) : il se termine par `.example`, donc il n'est pas ignoré.
+- `.env` protège contre la **fuite sur GitHub**, **pas** contre quelqu'un qui a accès à Docker : `docker compose config` (le fichier après remplacement des `${...}`) et `docker inspect` affichent le mot de passe en clair. → Contrôler qui est dans le groupe `docker` ; dans Kubernetes : les **Secrets**.
+
+## Piège : le healthcheck qui ment 🤥
+- Mot de passe ajouté à Redis, mais healthcheck resté `["CMD", "redis-cli", "ping"]` → `db` **`(healthy)`** quand même, et `app` plante.
+- Preuve : `docker compose exec db redis-cli ping; echo $?` → `NOAUTH Authentication required.` **et** code `0`.
+  - `docker compose exec <service> <commande>` = lancer une commande **dans** un conteneur qui tourne.
+  - `$?` = code de sortie de la **dernière** commande (0 = réussite).
+- **Cause** : un healthcheck ne lit pas la réponse, il regarde **seulement le code de sortie**. `redis-cli` renvoie 0 même quand Redis refuse.
+- **Correction** : `test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD} ping | grep PONG"]` → `grep` renvoie 0 **seulement** s'il trouve `PONG`. `CMD-SHELL` est nécessaire pour le tuyau `|` (fonction du shell).
+- Leçon (valable aussi pour Kubernetes) : un test de santé doit vérifier que le service fait **vraiment** son travail, pas seulement qu'il répond quelque chose.
+
+## Erreur : `redis.exceptions.AuthenticationError: HELLO must be called with the client already authenticated...`
+- **Cause** : Redis exige un mot de passe et `app` n'en a pas reçu → `Exited (1)`.
+- **Correction** : ajouter `REDIS_PASSWORD: ${REDIS_PASSWORD}` dans `environment:` de `app`. Après `up -d` : `db` et `app` recréés, `Exited (0)`, visite 3 (le volume a gardé le compteur).
+
+## Erreurs de la notion 12
+- `bash: cd: /exercices: No such file or directory` → un chemin qui commence par `/` est **absolu** (part de la racine du système). `cd exercices` = chemin **relatif** (part d'où je suis).
+- `cp: cannot stat '../11-healthcheck-redis/Dockerfile'` → commande lancée depuis le mauvais dossier : `..` dépend du dossier courant. Réflexe : `pwd`.
+- `❯ cp: command not found` → symbole de prompt `❯` collé avec la commande. Ne copier que la commande.
+- `cat: dockerfile: No such file or directory` → Linux distingue majuscules et minuscules : `Dockerfile` ≠ `dockerfile`.
+- `no configuration file provided: not found` → `docker compose` lancé dans un dossier sans `compose.yaml`.
+- `no such service: app.` → le point final faisait partie du nom du service.
+- Dans un vrai terminal bash, `!` en début de ligne **inverse le résultat** d'une commande : `! cd dossier && docker compose up -d` → le `cd` réussit, devient un « échec », et `&&` saute la suite.
+- `docker compose ps -q` → n'affiche que les **ID** des conteneurs qui **tournent**.
+- Nom du fichier : `compose.yaml` (pas `compose.yml` ni `yaml.compose`). Deux fichiers Compose dans le même dossier → Compose n'en lit qu'un.
+
+## Notion 12 : validée ✅
+- Variable d'environnement plutôt qu'en dur : on change la configuration sans modifier le code ni reconstruire l'image ; le code reste séparé des réglages propres à chaque environnement.
+- `.env` n'empêche pas quelqu'un qui a accès à Docker ou à la machine de lire le secret ; il évite de l'écrire dans le code et de l'envoyer sur GitHub, **à condition** qu'il soit dans `.gitignore`.

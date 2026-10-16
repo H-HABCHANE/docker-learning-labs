@@ -15,7 +15,9 @@ Il s'agit d'un dépôt d'apprentissage : chaque dossier correspond à une étape
 │   ├── 07-dockerfile-nginx/    ← première image : nginx + ma page HTML (FROM, COPY)
 │   ├── 08-dockerfile-python/   ← application Python empaquetée (WORKDIR, RUN, CMD)
 │   ├── 09-docker-compose/      ← Compose : nginx + client qui se parlent par nom de service
-│   └── 10-compose-volume/      ← Compose : build + volume nommé partagé (compteur de visites)
+│   ├── 10-compose-volume/      ← Compose : build + volume nommé partagé (compteur de visites)
+│   ├── 11-healthcheck-redis/   ← Compose : base Redis + healthcheck, l'appli attend que la base soit prête
+│   └── 12-variables-env/       ← variables d'environnement, .env (non versionné) + .env.example, Redis avec mot de passe
 ├── tp1/                    ← TP 1 : révision générale des notions 1 à 8
 │   ├── SUJET.md
 │   ├── CORRIGE.md
@@ -41,6 +43,8 @@ Il s'agit d'un dépôt d'apprentissage : chaque dossier correspond à une étape
 | 8 | Empaqueter une application | `WORKDIR`, `RUN`, `CMD`, `--rm`, cache de build |
 | 9 | Docker Compose | `compose.yaml`, `services`, `depends_on`, `docker compose up/ps/logs/down` |
 | 10 | Compose avancé | `build:`, volumes nommés, `service_completed_successfully`, `down -v` |
+| 11 | Base de données + healthcheck | `redis`, `healthcheck:` (`test`, `interval`, `timeout`, `retries`), `service_healthy` |
+| 12 | Variables d'environnement et secrets | `-e`, `environment:`, `.env`, `${VAR}`, `.env.example`, `docker compose exec` |
 
 ## Lancer les exemples
 

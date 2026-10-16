@@ -1,0 +1,19 @@
+services:
+  db:
+    image: redis
+    volumes:
+      - donnees:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 5
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  donnees:
