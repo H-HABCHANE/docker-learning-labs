@@ -16,13 +16,15 @@
 13. **permission denied … docker.sock** → `sudo usermod -aG docker $USER` puis **se déconnecter/reconnecter**.
 14. **Démarré ≠ prêt** : une base de données a un **healthcheck** + un **volume** ; l'appli attend avec `condition: service_healthy`. Un conteneur `unhealthy` reste `Up`.
 15. **Réglages et secrets hors de l'image** : `environment:` + `${VAR}` lu dans `.env` ; **`.env` jamais sur GitHub** (`.gitignore`), on versionne un `.env.example`. Un healthcheck ne regarde que le **code de sortie**.
+16. **Registre** : `docker tag` puis `docker push utilisateur/nom:version`. **`latest` ≠ la plus récente** (étiquette qui ne bouge pas toute seule) → toujours déployer une **version précise**.
 
 ## ⏸️ Où j'en suis (pause du 16/10/2026)
 - Notions 1 à 8 validées. **TP 1 de révision validé ✅** (`tp1/SUJET.md`).
 - Notions 9 (Docker Compose) et 10 (`build:` + volumes nommés) validées ✅.
 - **TP 2 validé ✅** (`tp2/SUJET.md`), « Le livre d'or ».
 - Notion 11 (base de données Redis + healthcheck) validée ✅.
-- Notion 12 (variables d'environnement, `.env`, secrets) validée ✅. **Prochaine notion : 13. Docker Hub et tags** (puis TP 3, et ensuite Kubernetes).
+- Notion 12 (variables d'environnement, `.env`, secrets) validée ✅.
+- Notion 13 (tags et Docker Hub) validée ✅. Image publiée : `hhabchane/bonjour:v2`. Connecté à Docker Hub (`docker login`). **Prochaine étape : TP 3** (révision 11 à 13), puis Kubernetes avec minikube.
 - Reprendre : `cd ~/docker-learning`.
 - Aide-mémoire de toutes les commandes : `commandes-docker.md`.
 - Corrigé du TP 1 : `tp1/CORRIGE.md`.
@@ -425,3 +427,44 @@ CMD ["python", "app.py"]     # exécuté à CHAQUE démarrage de conteneur
 ## Notion 12 : validée ✅
 - Variable d'environnement plutôt qu'en dur : on change la configuration sans modifier le code ni reconstruire l'image ; le code reste séparé des réglages propres à chaque environnement.
 - `.env` n'empêche pas quelqu'un qui a accès à Docker ou à la machine de lire le secret ; il évite de l'écrire dans le code et de l'envoyer sur GitHub, **à condition** qu'il soit dans `.gitignore`.
+
+## 13. Tags et Docker Hub (dossier `exercices/13-docker-hub/`)
+- Problème : mes images n'existent que **sur mon PC**. Les autres machines (et Kubernetes, même minikube) doivent les **télécharger** depuis un **registre**.
+- Analogie : mon PC = mon **cahier de recettes** perso ; **Docker Hub** = une **bibliothèque publique** de recettes. `push` = déposer, `pull` = emprunter. C'est de là que viennent `nginx`, `redis`, `python`…
+- **Nom complet** d'une image : `registre/utilisateur/nom:tag` → `docker.io/hhabchane/bonjour:v2`.
+  - `nginx` = `docker.io/library/nginx:latest` (`library` = le rayon des images **officielles**) ;
+  - `apache/spark` = image d'un **compte** Docker Hub ; `gcr.io/k8s-minikube/kicbase` = image d'un **autre registre** (Google).
+- **Tag = étiquette** collée sur une image. `docker build -t bonjour:v1 .` → seulement `v1` (pas de `latest` ajouté). `docker images bonjour` → filtre par nom.
+- `docker tag <existante> <nouvelle>` → ajoute une étiquette : **même ID**, pas de place en plus (un seul pot de confiture, deux étiquettes).
+- ⚠️ **Le piège de `latest`** : c'est juste l'étiquette **par défaut**, **pas** « la plus récente ». Elle ne bouge que si je la déplace.
+  - Vu en vrai : `latest` collé sur v1 → build de `bonjour:v2` → `docker run bonjour` affiche **« version 1 »** alors que la v2 existait !
+  - `docker tag bonjour:v2 bonjour:latest` → l'étiquette saute sur la v2 ; la v1 n'est **pas** supprimée (on peut revenir en arrière).
+  - → Avec Kubernetes : **toujours une version précise** (`hhabchane/bonjour:v2`), jamais `latest`.
+- Cache : changer une seule lettre de `app.py` → `COPY` refait (le cache compare le **contenu**).
+- **Connexion** : `docker login` dans un **vrai terminal interactif** (« cannot perform an interactive login from a non-TTY device » sinon). Méthode simple : `docker login` sans `-u` → code + validation dans le navigateur → `Login Succeeded`. Sinon : jeton d'accès (Personal Access Token) plutôt que le mot de passe. Jamais de mot de passe/jeton écrit ailleurs que dans le terminal.
+  - Warning « credentials are stored unencrypted in ~/.docker/config.json » → le badge de connexion est lisible par qui accède à ma session (même leçon que `.env`). `docker logout` pour se déconnecter.
+  - `docker info | grep Username` → le compte connecté.
+- **Publier** : étiqueter à mon nom, puis pousser :
+  ```bash
+  docker tag bonjour:v2 hhabchane/bonjour:v2
+  docker push hhabchane/bonjour:v2
+  ```
+  - `Pushed` = couche envoyée ; `Mounted from library/redis` = Docker Hub avait déjà cette couche (base Debian partagée), simple lien ; le **digest** `sha256:d88686db…` = l'empreinte de l'image (même début que l'ID local).
+  - Seule l'étiquette poussée est en ligne : sur Docker Hub, uniquement `v2` (ni `v1`, ni `latest`).
+- **Preuve** : `docker rmi` de toutes les étiquettes → `Untagged` (étiquette décollée) puis `Deleted` (plus aucune étiquette → image effacée). Puis `docker run --rm hhabchane/bonjour:v2` → `Unable to find image locally` → `Pulling from hhabchane/bonjour` → seules les couches manquantes sont téléchargées (`Already exists` pour les autres) → « version 2 ». C'est ce que fera Kubernetes.
+- Supprimer l'image en local **ne la supprime pas** de Docker Hub.
+
+## Erreur : « push access denied, repository does not exist or may require authorization: ... insufficient_scope »
+- **Cause** : `docker push bonjour:v2` → `The push refers to repository [docker.io/library/bonjour]` = le rayon des images **officielles**. Connecté, mais pas le droit d'y écrire.
+- **Correction** : étiqueter à mon nom (`hhabchane/bonjour:v2`) et pousser celle-là.
+
+## Erreurs de la notion 13
+- `unauthorized: incorrect username or password` (au `docker login -u`) → mauvais mot de passe : compte créé via Google (pas de mot de passe), ou collage raté (dans le terminal Ubuntu : **Ctrl+Shift+V**, et rien ne s'affiche). Solution : `docker login` par le navigateur, ou un jeton.
+- `cat` tout seul → attend du texte au clavier ; toujours lui donner un fichier.
+- Fichier nommé `nano` créé par `cp ... nano` : le dernier mot de `cp` est le **nom de destination**. Corrigé avec `mv`/`rm`.
+- `echo 'première ligne' > app.py` → il faut écrire le **code**, pas la description. `>` écrase, `>>` ajoute.
+- Supprimer une ligne sans éditeur : `sed -i '/MOT/d' fichier`. `rm` supprime **définitivement** (pas de corbeille).
+
+## Notion 13 : validée ✅
+- `latest` est dangereux : avec `latest`, j'ai eu la version 1 alors que la v2 existait (l'étiquette n'avait pas bougé). → Toujours une version précise.
+- `docker push bonjour:v2` refusé : sans nom d'utilisateur, c'est le rayon `library` des images officielles, je n'ai pas le droit. `hhabchane/bonjour:v2` est dans **mon** rayon.

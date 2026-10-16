@@ -17,7 +17,8 @@ Il s'agit d'un dépôt d'apprentissage : chaque dossier correspond à une étape
 │   ├── 09-docker-compose/      ← Compose : nginx + client qui se parlent par nom de service
 │   ├── 10-compose-volume/      ← Compose : build + volume nommé partagé (compteur de visites)
 │   ├── 11-healthcheck-redis/   ← Compose : base Redis + healthcheck, l'appli attend que la base soit prête
-│   └── 12-variables-env/       ← variables d'environnement, .env (non versionné) + .env.example, Redis avec mot de passe
+│   ├── 12-variables-env/       ← variables d'environnement, .env (non versionné) + .env.example, Redis avec mot de passe
+│   └── 13-docker-hub/          ← tags, piège de latest, publication sur Docker Hub (hhabchane/bonjour)
 ├── tp1/                    ← TP 1 : révision générale des notions 1 à 8
 │   ├── SUJET.md
 │   ├── CORRIGE.md
@@ -45,6 +46,7 @@ Il s'agit d'un dépôt d'apprentissage : chaque dossier correspond à une étape
 | 10 | Compose avancé | `build:`, volumes nommés, `service_completed_successfully`, `down -v` |
 | 11 | Base de données + healthcheck | `redis`, `healthcheck:` (`test`, `interval`, `timeout`, `retries`), `service_healthy` |
 | 12 | Variables d'environnement et secrets | `-e`, `environment:`, `.env`, `${VAR}`, `.env.example`, `docker compose exec` |
+| 13 | Tags et Docker Hub | `docker tag`, `docker login`, `docker push`, `latest`, nom complet `registre/utilisateur/nom:tag` |
 
 ## Lancer les exemples
 

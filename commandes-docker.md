@@ -23,6 +23,23 @@ docker rmi -f <image>             # Force la suppression (⚠️ à éviter quan
 ```
 
 **Nom d'une image** : `nom:tag`, par exemple `nginx:latest` ou `python:3.13-slim`. Le **tag** = la version. S'il est absent, Docker utilise `latest`.
+**Nom complet** : `registre/utilisateur/nom:tag` → `nginx` = `docker.io/library/nginx:latest` (`library` = images officielles).
+
+### Tags et Docker Hub (le registre = la bibliothèque publique de recettes)
+```bash
+docker images <nom>                       # N'affiche que les images de ce nom (ex. docker images bonjour)
+docker tag <existante> <nouvelle>         # Colle une ÉTIQUETTE de plus sur une image (même ID, pas de place en plus)
+docker tag bonjour:v2 bonjour:latest      #   → déplace "latest" sur la v2 (la v1 n'est pas supprimée)
+docker tag bonjour:v2 hhabchane/bonjour:v2  # → étiquette à MON nom, obligatoire pour publier
+
+docker login                              # Connexion à Docker Hub (vrai terminal interactif ; code + navigateur)
+docker login -u <utilisateur>             #   → variante : coller un jeton d'accès (Ctrl+Shift+V, rien ne s'affiche)
+docker logout                             # Déconnexion
+docker push <utilisateur>/<nom>:<tag>     # ENVOIE l'image sur Docker Hub (seulement ce tag-là)
+docker rmi <tag1> <tag2>                  # Untagged = étiquette décollée ; Deleted = plus aucune étiquette → image effacée
+```
+⚠️ **`latest` ≠ la plus récente** : c'est juste l'étiquette par défaut, elle ne bouge que si on la déplace. Toujours déployer une **version précise**.
+⚠️ `docker push bonjour:v2` (sans nom d'utilisateur) → `push access denied ... insufficient_scope` : c'est le rayon `library` des images officielles.
 
 ---
 
