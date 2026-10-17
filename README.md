@@ -24,11 +24,17 @@ Il s'agit d'un dépôt d'apprentissage : chaque dossier correspond à une étape
 │   ├── CORRIGE.md
 │   ├── Dockerfile, portfolio/  ← portfolio servi par nginx
 │   └── app-python/             ← appli Python
-└── tp2/                    ← TP 2 : Docker Compose (notions 9 et 10), « Le livre d'or »
-    └── SUJET.md
+├── tp2/                    ← TP 2 : Docker Compose (notions 9 et 10), « Le livre d'or »
+│   └── SUJET.md
+└── tp3/                    ← TP 3 : révision des notions 11 à 13, « Le compteur web »
+    ├── SUJET.md
+    ├── CORRIGE.md
+    └── app.py, Dockerfile, compose.yaml, .env.example  ← site Flask + Redis protégé, image publiée sur Docker Hub
 ```
 
-À venir (même organisation) : `tp3/`…, `kubernetes/`, `projets/`.
+À venir (même organisation) : `kubernetes/`, `projets/`.
+
+Images publiées sur Docker Hub : [`hhabchane/compteur-web`](https://hub.docker.com/r/hhabchane/compteur-web) (`v1`, `v2`) et `hhabchane/bonjour` (`v2`).
 
 ## Notions couvertes
 

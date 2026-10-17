@@ -17,6 +17,7 @@
 14. **Démarré ≠ prêt** : une base de données a un **healthcheck** + un **volume** ; l'appli attend avec `condition: service_healthy`. Un conteneur `unhealthy` reste `Up`.
 15. **Réglages et secrets hors de l'image** : `environment:` + `${VAR}` lu dans `.env` ; **`.env` jamais sur GitHub** (`.gitignore`), on versionne un `.env.example`. Un healthcheck ne regarde que le **code de sortie**.
 16. **Registre** : `docker tag` puis `docker push utilisateur/nom:version`. **`latest` ≠ la plus récente** (étiquette qui ne bouge pas toute seule) → toujours déployer une **version précise**.
+17. **`Up` ≠ « ça marche »** : le conteneur peut tourner pendant que l'appli est en panne (erreur 500). Seul un test du **vrai travail** de l'appli le détecte.
 
 ## ⏸️ Où j'en suis (pause du 16/10/2026)
 - Notions 1 à 8 validées. **TP 1 de révision validé ✅** (`tp1/SUJET.md`).
@@ -24,7 +25,9 @@
 - **TP 2 validé ✅** (`tp2/SUJET.md`), « Le livre d'or ».
 - Notion 11 (base de données Redis + healthcheck) validée ✅.
 - Notion 12 (variables d'environnement, `.env`, secrets) validée ✅.
-- Notion 13 (tags et Docker Hub) validée ✅. Image publiée : `hhabchane/bonjour:v2`. Connecté à Docker Hub (`docker login`). **Prochaine étape : TP 3** (révision 11 à 13), puis Kubernetes avec minikube.
+- Notion 13 (tags et Docker Hub) validée ✅. Image publiée : `hhabchane/bonjour:v2`. Connecté à Docker Hub (`docker login`).
+- **TP 3 validé ✅** (`tp3/SUJET.md`, `tp3/CORRIGE.md`), « Le compteur web ». Images publiées : `hhabchane/compteur-web:v1` et `:v2`.
+- **Prochaine étape : Kubernetes avec minikube** (dossier `kubernetes/`), en déployant `hhabchane/compteur-web`.
 - Reprendre : `cd ~/docker-learning`.
 - Aide-mémoire de toutes les commandes : `commandes-docker.md`.
 - Corrigé du TP 1 : `tp1/CORRIGE.md`.
@@ -468,3 +471,29 @@ CMD ["python", "app.py"]     # exécuté à CHAQUE démarrage de conteneur
 ## Notion 13 : validée ✅
 - `latest` est dangereux : avec `latest`, j'ai eu la version 1 alors que la v2 existait (l'étiquette n'avait pas bougé). → Toujours une version précise.
 - `docker push bonjour:v2` refusé : sans nom d'utilisateur, c'est le rayon `library` des images officielles, je n'ai pas le droit. `hhabchane/bonjour:v2` est dans **mon** rayon.
+
+## TP 3 : « Le compteur web » (dossier `tp3/`, corrigé dans `tp3/CORRIGE.md`)
+- Un vrai **site web** Flask (`app.run(host="0.0.0.0", port=5000)`) qui compte ses visites dans Redis protégé par mot de passe. `0.0.0.0` = accepter les connexions venant de l'extérieur du conteneur.
+- Un serveur web **ne s'arrête pas** → `web` reste **Up** (contrairement aux scripts des exercices 11-12, qui finissaient en `Exited (0)`).
+- Ports `8080:5000` : à droite, le port où **l'appli écoute** (5000 pour Flask, 80 pour nginx). Mettre `8080:80` ici → page qui ne répond pas alors que le conteneur est `Up`.
+- `build: .` **+** `image: hhabchane/compteur-web:v1` → Compose construit l'image et lui donne **ce nom** (au lieu de `<projet>-<service>`), prête à être poussée.
+- `pip install flask` installe aussi ses **dépendances** (8 bibliothèques). `--no-cache-dir` = pip ne garde pas ses téléchargements dans l'image. Le warning « Running pip as the root user » n'est pas grave dans un conteneur.
+- `EXTRA = U` dans `docker images` = image **utilisée** par un conteneur.
+- Changer `NOM_APP` → seul `web` recréé, pas de build. Changer `VERSION` (dans le code) → **rebuild** obligatoire. `RUN pip install` reste `CACHED`.
+- `web` est **sans état** (*stateless*) : recréé plusieurs fois, le compteur continue (il est dans le volume de `db`). C'est ce que Kubernetes aime.
+- Push : `Pushed` (envoyée), `Mounted from hhabchane/bonjour` (déjà dans un autre dépôt à moi → lien), `Layer already exists` (déjà dans ce dépôt). On ne transporte que les couches qui changent.
+- `docker compose logs --tail 5 web` → les 5 dernières lignes.
+- `down` arrête les services dans l'**ordre inverse** du démarrage.
+
+## Panne volontaire : `500 Internal Server Error` (TP 3, partie 8)
+- **Provoquée** par `docker compose stop db`.
+- `curl` → page HTML **500** envoyée par Flask (Flask marche, mais plante en traitant la demande). Logs : `redis.exceptions.ConnectionError: Error -3 connecting to db:6379. Temporary failure in name resolution.` → un conteneur arrêté disparaît du **DNS interne**.
+- `web` reste **Up** pendant la panne : **`Up` ≠ « ça marche »**.
+- **Correction** : `docker compose start db` → attendre `(healthy)` → la page remarche **sans redémarrer `web`** (la bibliothèque redis retente à chaque visite). Le compteur n'est pas perdu (volume intact, la visite en erreur n'a rien écrit).
+- Pour détecter ce genre de panne : un healthcheck sur `web` qui teste vraiment une page. ⚠️ `python:3.13-slim` n'a ni `curl` ni `wget` → `python -c "import urllib.request; urllib.request.urlopen('http://localhost:5000')"`. Dans Kubernetes : les **probes**.
+
+## Leçon du TP 3 : le terminal a toujours raison
+- Visite 13 au lieu de 14 → la page de la partie 5 n'avait pas vraiment été affichée (j'avais recopié ma prédiction). Toujours coller la **sortie brute**.
+
+## TP 3 : validé ✅
+- Contrôles 0 à 9 réussis, images `hhabchane/compteur-web:v1` et `:v2` publiées sur Docker Hub.
